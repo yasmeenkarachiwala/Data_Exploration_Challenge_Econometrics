@@ -1,0 +1,112 @@
+---
+title: "Data_Exploration_Challenge"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+#Step 1 -- Loading the libraies 
+
+library(tidyverse)
+library(rio)
+library(vtable)
+library(fixest)
+library(dplyr)
+library(lubridate)
+library(multcomp) 
+# # Generalized Linear Hypothesis Test
+
+```
+
+```{r}
+# reading the data
+# As outlined in instructions to avoid the error in reading moving one level up y using ../
+walmart <- read.csv("../raw_data/Walmart_Sales (1).csv")
+str(walmart)
+```
+
+```{r}
+#Graphs that guide modeling
+# Graph 1 
+walmart <- read.csv("../raw_data/Walmart_Sales (1).csv") %>% mutate(Date = dmy(Date))
+
+# Aggregate Weekly Sales 
+weekly_sales_time <- walmart %>% group_by(Date) %>% summarise(total_weekly_sales = sum(Weekly_Sales,na.rm = TRUE))
+
+# Plot weekly sales over time 
+ sales_plot <- ggplot( weekly_sales_time, aes (x = Date, y= total_weekly_sales) ) +
+  geom_line(color="steelblue", linewidth = 0.8 )+
+  labs (title = "Total Weekly Walmart Sales Over Time",
+        x= "Date",
+        y = "Total Weekly Sales"
+        ) +
+  theme_minimal()
+ 
+ sales_plot
+  
+```
+
+```{r}
+#Graph 2 
+temp_time <- walmart %>% group_by(Date) %>% summarise(mean_temp = mean(Temperature, na.rm = TRUE))
+ggplot(temp_time, aes(x= Date, y = mean_temp )) +
+      geom_line(color = "steelblue", linewidth = 0.8)+
+      labs(title = "Average Temperature OVer Time", 
+           x = "Date", 
+            y = "Average Temperature"
+           )+
+      theme_minimal()
+```
+
+```{r}
+# moving to regression 
+# naive
+m_naive <- feols(Weekly_Sales ~ Temperature, data = walmart)
+etable (m_naive)
+```
+
+```{r}
+m_fe <- feols(Weekly_Sales ~ Temperature+Unemployment + Fuel_Price | Store+Date , data = walmart)
+
+etable (m_fe)
+```
+
+```{r}
+m_fe_cl <- feols( Weekly_Sales~Temperature + Unemployment + Fuel_Price | Store+Date, 
+                  data = walmart ,
+                  cluster = ~ Store 
+  )
+
+etable(m_fe, m_fe_cl)
+```
+
+```{r}
+m_quad <- feols( Weekly_Sales~ Temperature + I(Temperature)^2 + Unemployment + Fuel_Price| Store+Date, data = walmart, cluster = ~ Store )
+
+etable(m_fe, m_quad)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
