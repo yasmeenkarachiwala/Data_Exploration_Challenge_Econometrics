@@ -29,69 +29,79 @@ library(multcomp)
 ```{r}
 # reading the data
 # As outlined in instructions to avoid the error in reading moving one level up y using ../
-walmart <- read.csv("../raw_data/Walmart_Sales (1).csv")
+# dmy(Date) to convert it to correct date format 
+walmart <- read.csv("../raw_data/Walmart_Sales (1).csv") %>% mutate(Date = dmy(Date))
 str(walmart)
 ```
 
 ```{r}
-#Graphs that guide modeling
-# Graph 1 
-walmart <- read.csv("../raw_data/Walmart_Sales (1).csv") %>% mutate(Date = dmy(Date))
+# transforming the variables 
+# Convert store as a binary variable 
+# Convert weekly sales as logs 
+walmart <- walmart %>% 
+    mutate ( 
+      Year = year(Date),
+      Month = month(Date),
+      YearMonth = floor_date(Date, "month"),
+      Store = as.factor(Store),
+      Holiday_Flag = as.factor(Holiday_Flag),
+      log_sales = log(Weekly_Sales)
+    ) %>% arrange(Store, Date)
 
-# Aggregate Weekly Sales 
-weekly_sales_time <- walmart %>% group_by(Date) %>% summarise(total_weekly_sales = sum(Weekly_Sales,na.rm = TRUE))
+```
 
-# Plot weekly sales over time 
- sales_plot <- ggplot( weekly_sales_time, aes (x = Date, y= total_weekly_sales) ) +
-  geom_line(color="steelblue", linewidth = 0.8 )+
-  labs (title = "Total Weekly Walmart Sales Over Time",
-        x= "Date",
-        y = "Total Weekly Sales"
-        ) +
-  theme_minimal()
- 
- sales_plot
+```{r}
+dim(walmart)
+```
+
+```{r}
+# Check if the panel data is balanced, i.e each entity i.e store is represented for the same time period 
+N <- n_distinct(walmart$Store)
+T <- walmart %>% group_by(Store) %>% summarize(n = n()) %>% pull(n) %>% unique()
+N*T == nrow(walmart)
+
+```
+
+```{r}
+
+#EDA that informs the model
+# Distribution of sales (motivation for log transform)
+ggplot(walmart, aes(x= Weekly_Sales)) +
+         geom_histogram(bins = 40) +
+         scale_x_continuous(labels = dollar)+
+         labs(title = 'Weekly_Sales are right-skewed -> log(Weekly_Sales) is reasonable',
+         x = "Weekly_Sales", y= "Count")
+```
+
+```{r}
+ggplot(walmart, aes(x=log_sales))+
+       geom_histogram(bins = 40) +
+       labs(title = "Distribution after log transform", 
+          x= "log(Weekly_Sales)", y= "Count"
+       )
   
 ```
 
 ```{r}
-#Graph 2 
-temp_time <- walmart %>% group_by(Date) %>% summarise(mean_temp = mean(Temperature, na.rm = TRUE))
-ggplot(temp_time, aes(x= Date, y = mean_temp )) +
-      geom_line(color = "steelblue", linewidth = 0.8)+
-      labs(title = "Average Temperature OVer Time", 
-           x = "Date", 
-            y = "Average Temperature"
-           )+
-      theme_minimal()
+## Raw relationship: sales vs temperature (possible nonlinearity)
+
+ggplot(walmart, aes(x= Temperature, y= log_sales))+
+      geom_point(alpha = 0.15) +
+      geom_smooth(method = "loess", se = TRUE)+
+      labs(title = "Raw relationship suggests potential nonlinearity", 
+           x=  "Temperature (F)", y = "log(Weekly_Sales)")
 ```
 
 ```{r}
-# moving to regression 
-# naive
-m_naive <- feols(Weekly_Sales ~ Temperature, data = walmart)
-etable (m_naive)
+
 ```
 
 ```{r}
-m_fe <- feols(Weekly_Sales ~ Temperature+Unemployment + Fuel_Price | Store+Date , data = walmart)
 
-etable (m_fe)
 ```
 
 ```{r}
-m_fe_cl <- feols( Weekly_Sales~Temperature + Unemployment + Fuel_Price | Store+Date, 
-                  data = walmart ,
-                  cluster = ~ Store 
-  )
 
-etable(m_fe, m_fe_cl)
-```
-
-```{r}
-m_quad <- feols( Weekly_Sales~ Temperature + I(Temperature)^2 + Unemployment + Fuel_Price| Store+Date, data = walmart, cluster = ~ Store )
-
-etable(m_fe, m_quad)
 ```
 
 ```{r}
@@ -105,8 +115,7 @@ etable(m_fe, m_quad)
 You can add options to executable code like this
 
 ```{r}
-#| echo: false
-2 * 2
+
 ```
 
 The `echo: false` option disables the printing of code (only output is displayed).
