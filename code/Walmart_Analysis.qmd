@@ -1,0 +1,43 @@
+---
+title: "Walmart_Analysis"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+# Step 1 - Loading relevant libraries 
+
+```{r}
+library(tidyverse)
+library(scales)
+library(vtable)
+library(fixest)
+library(dplyr)
+library(lubridate)
+```
+
+# Step 2-Loading the files, EDA and Transformation
+
+```{r}
+# reading the data
+# As outlined in instructions to avoid the error in reading moving one level up y using ../
+# dmy(Date) to convert it to correct date format 
+walmart <- read.csv("../raw_data/Walmart_Sales (1).csv") %>% mutate(Date = dmy(Date))
+str(walmart)
+```
+
+```{r}
+
+```
+
+```{2 * 2}
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
