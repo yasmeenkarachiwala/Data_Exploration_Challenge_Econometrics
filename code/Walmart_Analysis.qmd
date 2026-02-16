@@ -2,17 +2,18 @@
 title: "Walmart_Analysis"
 format: html
 editor: visual
+Name: Yasmeen Karachiwala
 ---
 
-## Quarto
+# Introduction 
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+Average temperatures have been rising over time, Wal-Mart is curious whether this might have a harmful impact on their sales. The analysis is focused on evaluating the dataset provided across 45 stores spanning February 2010 through October 2012, to understand if there is casual relationship between sales and temperatures and if there are any other factors (variables) which also affect the sales along with temperature
 
-## Running Code
+**Approach**
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+Exploratory Analysis to understand the relationship between different variables in the dataset, based on the casual diagram. Evaluate the functional form to understand if the relationship is linear or non - linear . Since the data is panel data we need to use within variation fixed effects, control and clustered standard errors
 
-# Step 1 - Loading relevant libraries 
+# Step 1 - Loading relevant libraries
 
 ```{r}
 library(tidyverse)
@@ -23,21 +24,195 @@ library(dplyr)
 library(lubridate)
 ```
 
-# Step 2-Loading the files, EDA and Transformation
+# Step 2-Loading the raw data, EDA and Transformation
+
+Observe for null/missing values
+
+-   The Date column is converted to Date Type using dmy()
+
+-   Convert store as a binary variable
+
+-   Convert weekly sales as logs
 
 ```{r}
 # reading the data
-# As outlined in instructions to avoid the error in reading moving one level up y using ../
+# As outlined in instructions to avoid the error in reading moving one level up  using ../
 # dmy(Date) to convert it to correct date format 
+
 walmart <- read.csv("../raw_data/Walmart_Sales (1).csv") %>% mutate(Date = dmy(Date))
+## Understand the data types for each variable
 str(walmart)
 ```
 
 ```{r}
+# transforming the variables 
+# Convert store as a binary variable 
+# Convert weekly sales as logs 
+walmart <- walmart %>% 
+    mutate ( 
+      Year = year(Date),
+      Month = month(Date),
+      YearMonth = floor_date(Date, "month"),
+      Store = as.factor(Store),
+      Holiday_Flag = as.factor(Holiday_Flag),
+      log_sales = log(Weekly_Sales)
+    ) %>% arrange(Store, Date)
+   
+```
+
+Validating if the Panel Data is balanced
+
+```{r}
+#Check if the panel data is balanced,each entity i.e store is represented for the same time period 
+N <- n_distinct(walmart$Store)
+T_per_score <- walmart %>% group_by(Store) %>% summarize(n = n()) %>% pull(n) %>% unique()
+N*T_per_score == nrow(walmart)
 
 ```
 
-```{2 * 2}
+```{r}
+# EDA that informs the model # Distribution of sales (motivation for log transform)
+
+ggplot ( walmart, aes(x= Weekly_Sales)) +
+         geom_histogram(bins = 40) +
+         scale_x_continuous(labels = dollar)+
+         labs(title = 'Weekly_Sales are right-skewed -> log(Weekly_Sales) is reasonable',
+         x = "Weekly_Sales", y= "Count"
+         )
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+ggplot(walmart, aes(x=log_sales))+
+       geom_histogram(bins = 40) +
+       labs(title = "Distribution after log transform", 
+       x= "log(Weekly_Sales)", y= "Count"
+          )
+```
+
+# Step 3 -Casual Diagram and validation
+
+![](dagitty-model (2).png)
+
+The causal diagram shows how different factors might affect Walmart sales. Temperature is the main independent variable and weekly sales is dependent variable. The goal is to determine whether changes in temperature have a causal effect on sales.
+
+Date which includes seasonality plays an important role. Sales trend increase/decrease during certain times of the year, failing to control for Date and Holiday_Flag would create misleading relationship between sales and temperature, exmaple during winter sales would increase possibly due to festive season and not because of lower temperature. To address we control for Holiday Flag through date fixed effect
+
+Store characteristics like location, size, store quality (layout, customer service, management) which can influence both temperature and sales. To control these time invariant store characteristics we include store fixed effect
+
+Economic factors like fuel price, unemployment and CPI may affect purchasing behavior and therefore influence sales. These variables are included as controls to account for macroeconomic conditions that could otherwise confound the relationship between temperature and sales with date fixed effects
+
+Location and Date create back-door paths between temperature and sales. Store fixed effects absorb time-invariant store characteristics including geographic location and store quality, while date fixed effects block seasonal and macroeconomic shocks.
+
+DAG implies -
+
+-   Temperature ← Location(StoreChar) → Sales
+
+-   Temperature ← Date → Sales
+
+    These are the two main back-door paths.
+
+```{r}
+##Seasonality / time confounding (why we need time fixed effects) 
+walmart %>% group_by(Date) %>% 
+    summarize(avg_temp = mean(Temperature),
+              avg_log_sales = mean(log_sales)) %>%      ggplot(aes(x = Date)) + 
+     geom_line(aes(y= avg_temp)) + 
+     geom_line(aes(y= avg_log_sales), linetype = "dashed")+
+  labs(title = "Both temperature and sales move over time → time confounding likely", 
+       y= "Solid:avg temp| Dashed: avg log sales")
+```
+
+# Step 4 - Functional Form 
+
+```{r}
+## Raw relationship: sales vs temperature (possible nonlinearity)
+ggplot( walmart, aes(x= Temperature, y= log_sales))+
+       geom_point(alpha = 0.15) +
+       geom_smooth(method = "loess", se = TRUE)+
+       labs(title = "Raw relationship suggests potential nonlinearity", 
+           x=  "Temperature (F)", y = "log(Weekly_Sales)"
+           )
+```
+
+The purpose of this plot is to check the functional form i.e shape of the dependent variable i.e **sales** and independent variable i.e **temperature,** based on which we can decide on the model . The plot shows inverted U- shape, indicating a non-linear relationship between temperature and sales, hence we include quadratic term in the regression model
+
+# Step 5 - Regression Model with Fixed Effects   
+
+A panel fixed regression model blocks both date (time) and store back-doors paths.
+
+-   Controls - Fuel_Price, CPI, Unemployment
+
+-   Fixed effect for stores controls for time - invariant effects i.e store size, location , demographics ( gender and age of customers ...etc)
+
+-   Fixed effect for date ( Weekly) controls for time - invariant effects example seasonal patterns ( holiday sales)
+
+-    Use clustered SEs by store (serial correlation within store over time is likely)
+
+```{r}
+# Panel fixed effect regression 
+
+m1 <- feols (
+      log_sales ~ Temperature + I(Temperature^2) + Fuel_Price + CPI + Unemployment 
+      |Store+Date,      
+      data = walmart,
+      vcov = ~ Store)
+
+etable(m1,digits = 3)
+
+```
+
+**Regression Interpretation**
+
+A one degree Fahrenheit increase in temperature is associated with approximately 0.5% increase in weekly sales, holding fuel prices, CPI, unemployment, date and store fixed effects constant.
+
+Temperature effect -
+
+-   Coefficent Temperature = 0.005 (p\<0.001)
+
+-   Coefficient Temperature\^2 = -3.27e-5 (p\<0.001)
+
+We strongly reject the null hypothesis ( β*Temp* = 0)
+
+t-test = β1*Temp* - β0 /SE
+
+= 0.005 - 0 / (0.0009) \~ 5.56
+
+The standard error is very large suggesting the value is far from the null value
+
+-   Regression equation
+
+log(Sales) = β0 + β1*Temp + β2*Temp\^2 + controls + FE + error
+
+-   Taking the derivative
+
+d(log Sales)/dt (temp) = β1*Temp + 2β2*Temp
+
+-   The slope equals zero when:
+
+= 0.005 - 2(-3.27e-5 )Temp = 0
+
+2(-3.27e-5 )Temp = 0.005
+
+Temp = β1/*2β2 \~ 76* degree Fahrenheit
+
+Sales increase with temperature upto 7*6* degree Fahrenheit ( the highest point of the blue curve where the slope is zero) then it starts to decline.
+
+**Fuel_Price**
+
+Coefficient: -0.005 (p\<1)
+
+A \$1 increase in fuel price decreases the weekly sales by 0.5%
+
+**CPI**
+
+Coefficient: -0.0003 (p\<1)
+
+Statistically insignificant
+
+**Unemployment**
+
+Coefficient: -0.026 (p\<0.05)
+
+A percentage point increase in unemployment decrease the weekly sales by 2.6%
+
+**Conclusion**
