@@ -70,6 +70,8 @@ N*T_per_score == nrow(walmart)
 
 ```
 
+-   The Weekly Sales is right skewed, converting to logs helps stabilize the distribution and allows coefficients to be interpreted as percentage change in sales
+
 ```{r}
 # EDA that informs the model # Distribution of sales (motivation for log transform)
 
@@ -122,6 +124,8 @@ walmart %>% group_by(Date) %>%
        y= "Solid:avg temp| Dashed: avg log sales")
 ```
 
+The time-series EDA reveals strong seasonal and trending behavior in both temperature and sales, suggesting potential spurious correlation. To address this, I include date fixed effects to absorb common seasonal and macroeconomic shocks.
+
 # Step 4 - Functional Form 
 
 ```{r}
@@ -165,7 +169,7 @@ etable(m1,digits = 3)
 
 A one degree Fahrenheit increase in temperature is associated with approximately 0.5% increase in weekly sales, holding fuel prices, CPI, unemployment, date and store fixed effects constant.
 
-Temperature effect -
+**Temperature effect -**
 
 -   Coefficent Temperature = 0.005 (p\<0.001)
 
@@ -215,4 +219,4 @@ Coefficient: -0.026 (p\<0.05)
 
 A percentage point increase in unemployment decrease the weekly sales by 2.6%
 
-**Conclusion**
+**Conclusion**:

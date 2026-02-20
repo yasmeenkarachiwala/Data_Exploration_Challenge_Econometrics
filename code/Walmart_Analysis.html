@@ -209,6 +209,9 @@ The following object is masked from 'package:scales':
 <pre><code>[1] TRUE</code></pre>
 </div>
 </div>
+<ul>
+<li>The Weekly Sales is right skewed, converting to logs helps stabilize the distribution and allows coefficients to be interpreted as percentage change in sales</li>
+</ul>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># EDA that informs the model # Distribution of sales (motivation for log transform)</span></span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -272,6 +275,7 @@ The following object is masked from 'package:scales':
 </div>
 </div>
 </div>
+<p>The time-series EDA reveals strong seasonal and trending behavior in both temperature and sales, suggesting potential spurious correlation. To address this, I include date fixed effects to absorb common seasonal and macroeconomic shocks.</p>
 </section>
 <section id="step-4---functional-form" class="level1">
 <h1>Step 4 - Functional Form</h1>
@@ -338,7 +342,7 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </div>
 <p><strong>Regression Interpretation</strong></p>
 <p>A one degree Fahrenheit increase in temperature is associated with approximately 0.5% increase in weekly sales, holding fuel prices, CPI, unemployment, date and store fixed effects constant.</p>
-<p>Temperature effect -</p>
+<p><strong>Temperature effect -</strong></p>
 <ul>
 <li><p>Coefficent Temperature = 0.005 (p&lt;0.001)</p></li>
 <li><p>Coefficient Temperature^2 = -3.27e-5 (p&lt;0.001)</p></li>
@@ -371,7 +375,7 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <p><strong>Unemployment</strong></p>
 <p>Coefficient: -0.026 (p&lt;0.05)</p>
 <p>A percentage point increase in unemployment decrease the weekly sales by 2.6%</p>
-<p><strong>Conclusion</strong></p>
+<p><strong>Conclusion</strong>:</p>
 </section>
 
 </main>
