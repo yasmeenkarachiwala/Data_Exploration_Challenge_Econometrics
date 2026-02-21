@@ -1,13 +1,13 @@
 ---
 title: "Walmart_Analysis"
-format: html
+format: docx
 editor: visual
 Name: Yasmeen Karachiwala
 ---
 
-# Introduction 
+# Introduction
 
-Average temperatures have been rising over time, Wal-Mart is curious whether this might have a harmful impact on their sales. The analysis is focused on evaluating the dataset provided across 45 stores spanning February 2010 through October 2012, to understand if there is casual relationship between sales and temperatures and if there are any other factors (variables) which also affect the sales along with temperature
+Average temperatures have been rising over time, Wal-Mart is curious whether this might have a harmful impact on their sales. The analysis is focused on evaluating the dataset provided across 45 stores spanning February 2010 through October 2012, to understand if there is causal relationship between sales and temperatures and if there are any other factors (variables) which also affect the sales along with temperature
 
 **Approach**
 
@@ -26,11 +26,9 @@ library(lubridate)
 
 # Step 2-Loading the raw data, EDA and Transformation
 
-Observe for null/missing values
+-   Observe for null/missing values
 
 -   The Date column is converted to Date Type using dmy()
-
--   Convert store as a binary variable
 
 -   Convert weekly sales as logs
 
@@ -46,14 +44,13 @@ str(walmart)
 
 ```{r}
 # transforming the variables 
-# Convert store as a binary variable 
 # Convert weekly sales as logs 
+# Extract year and month from date
 walmart <- walmart %>% 
     mutate ( 
       Year = year(Date),
       Month = month(Date),
       YearMonth = floor_date(Date, "month"),
-      Store = as.factor(Store),
       Holiday_Flag = as.factor(Holiday_Flag),
       log_sales = log(Weekly_Sales)
     ) %>% arrange(Store, Date)
@@ -73,6 +70,7 @@ N*T_per_score == nrow(walmart)
 -   The Weekly Sales is right skewed, converting to logs helps stabilize the distribution and allows coefficients to be interpreted as percentage change in sales
 
 ```{r}
+
 # EDA that informs the model # Distribution of sales (motivation for log transform)
 
 ggplot ( walmart, aes(x= Weekly_Sales)) +
@@ -93,11 +91,11 @@ ggplot(walmart, aes(x=log_sales))+
 
 # Step 3 -Casual Diagram and validation
 
-![](dagitty-model (2).png)
+![](dagitty-model%20(2).png)
 
 The causal diagram shows how different factors might affect Walmart sales. Temperature is the main independent variable and weekly sales is dependent variable. The goal is to determine whether changes in temperature have a causal effect on sales.
 
-Date which includes seasonality plays an important role. Sales trend increase/decrease during certain times of the year, failing to control for Date and Holiday_Flag would create misleading relationship between sales and temperature, exmaple during winter sales would increase possibly due to festive season and not because of lower temperature. To address we control for Holiday Flag through date fixed effect
+Date which includes seasonality plays an important role. Sales trend increase/decrease during certain times of the year, failing to control for Date and Holiday_Flag would create misleading relationship between sales and temperature, example during winter sales would increase possibly due to festive season and not because of lower temperature. To address we control for Holiday Flag through date fixed effect
 
 Store characteristics like location, size, store quality (layout, customer service, management) which can influence both temperature and sales. To control these time invariant store characteristics we include store fixed effect
 
@@ -107,11 +105,11 @@ Location and Date create back-door paths between temperature and sales. Store fi
 
 DAG implies -
 
--   Temperature ← Location(StoreChar) → Sales
+-   Temperature ← Location(StoreCharacterstics ) → Sales
 
 -   Temperature ← Date → Sales
 
-    These are the two main back-door paths.
+    These are the two main back-door paths
 
 ```{r}
 ##Seasonality / time confounding (why we need time fixed effects) 
@@ -126,7 +124,7 @@ walmart %>% group_by(Date) %>%
 
 The time-series EDA reveals strong seasonal and trending behavior in both temperature and sales, suggesting potential spurious correlation. To address this, I include date fixed effects to absorb common seasonal and macroeconomic shocks.
 
-# Step 4 - Functional Form 
+# Step 4 - Functional Form
 
 ```{r}
 ## Raw relationship: sales vs temperature (possible nonlinearity)
@@ -138,9 +136,11 @@ ggplot( walmart, aes(x= Temperature, y= log_sales))+
            )
 ```
 
-The purpose of this plot is to check the functional form i.e shape of the dependent variable i.e **sales** and independent variable i.e **temperature,** based on which we can decide on the model . The plot shows inverted U- shape, indicating a non-linear relationship between temperature and sales, hence we include quadratic term in the regression model
+The purpose of this plot is to check the functional form i.e shape of the dependent variable **sales** and independent variable **temperature,** based on which we can decide on the model . The plot shows inverted U- shape, indicating a non-linear relationship between temperature and sales, hence we include quadratic term in the regression model
 
-# Step 5 - Regression Model with Fixed Effects   
+# Step 5 - Regression Model with Fixed Effects
+
+-   Model 1
 
 A panel fixed regression model blocks both date (time) and store back-doors paths.
 
@@ -150,16 +150,17 @@ A panel fixed regression model blocks both date (time) and store back-doors path
 
 -   Fixed effect for date ( Weekly) controls for time - invariant effects example seasonal patterns ( holiday sales)
 
--    Use clustered SEs by store (serial correlation within store over time is likely)
+-   Standard errors are clustered at the store level to adjust for serial correlation within stores over time.
+
+-   Holiday_Flag is dropped because it has no independent variation once date fixed is included
 
 ```{r}
 # Panel fixed effect regression 
-
+# vcov -->Clustered Errors 
 m1 <- feols (
-      log_sales ~ Temperature + I(Temperature^2) + Fuel_Price + CPI + Unemployment 
-      |Store+Date,      
-      data = walmart,
-      vcov = ~ Store)
+      log_sales ~ Temperature + I(Temperature^2) + Fuel_Price + CPI + Unemployment | Store +Date,      
+data = walmart,
+vcov = ~ Store)
 
 etable(m1,digits = 3)
 
@@ -171,7 +172,7 @@ A one degree Fahrenheit increase in temperature is associated with approximately
 
 **Temperature effect -**
 
--   Coefficent Temperature = 0.005 (p\<0.001)
+-   Coefficient Temperature = 0.005 (p\<0.001)
 
 -   Coefficient Temperature\^2 = -3.27e-5 (p\<0.001)
 
@@ -181,7 +182,7 @@ t-test = β1*Temp* - β0 /SE
 
 = 0.005 - 0 / (0.0009) \~ 5.56
 
-The standard error is very large suggesting the value is far from the null value
+The standard error is small relative to the coefficient, leading to a large t-statistic and strong statistical significance.
 
 -   Regression equation
 
@@ -189,11 +190,11 @@ log(Sales) = β0 + β1*Temp + β2*Temp\^2 + controls + FE + error
 
 -   Taking the derivative
 
-d(log Sales)/dt (temp) = β1*Temp + 2β2*Temp
+d(log Sales)/dt (temp) = β1*+ 2β2*Temp
 
 -   The slope equals zero when:
 
-= 0.005 - 2(-3.27e-5 )Temp = 0
+0.005 - 2(-3.27e-5 )Temp = 0
 
 2(-3.27e-5 )Temp = 0.005
 
@@ -211,7 +212,7 @@ A \$1 increase in fuel price decreases the weekly sales by 0.5%
 
 Coefficient: -0.0003 (p\<1)
 
-Statistically insignificant
+Statistically insignificant at conventional levels.
 
 **Unemployment**
 
@@ -219,4 +220,16 @@ Coefficient: -0.026 (p\<0.05)
 
 A percentage point increase in unemployment decrease the weekly sales by 2.6%
 
+**Within R-square**
+
+Temperature and macro controls explain about 3.8% of within-store weekly variation in sales.
+
+-   Model 2
+
 **Conclusion**:
+
+This analysis examines whether higher temperatures causally affect weekly sales across 45 Walmart stores between 2010 and 2012. Using panel data methods with store and week fixed effects, the causal effect of temperature is identified from cross-store variation in temperature within the same week, after removing time-invariant store characteristics and common seasonal or macroeconomic shocks.
+
+The regression results show that temperature has a statistically significant nonlinear (quadratic) relationship with sales. At moderate temperatures, a one-degree Fahrenheit increase is associated with approximately a 0.5% increase in weekly sales. However, the negative quadratic term implies diminishing returns to temperature, with sales reaching a peak at approximately 76°F. Beyond this point, further increases in temperature reduce sales.
+
+Overall, the evidence suggests that temperature does have a causal effect on sales, but the relationship is nonlinear. For managerial decision-making, this implies that moderate warming may benefit sales, whereas extreme heat events may negatively impact store performance. These findings can help Walmart in forecasting, planning inventory and marketing events based on temperature

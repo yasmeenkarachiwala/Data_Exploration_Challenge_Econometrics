@@ -159,8 +159,8 @@ The following object is masked from 'package:scales':
 </section>
 <section id="step-2-loading-the-raw-data-eda-and-transformation" class="level1">
 <h1>Step 2-Loading the raw data, EDA and Transformation</h1>
-<p>Observe for null/missing values</p>
 <ul>
+<li><p>Observe for null/missing values</p></li>
 <li><p>The Date column is converted to Date Type using dmy()</p></li>
 <li><p>Convert store as a binary variable</p></li>
 <li><p>Convert weekly sales as logs</p></li>
@@ -248,13 +248,13 @@ The following object is masked from 'package:scales':
 <h1>Step 3 -Casual Diagram and validation</h1>
 <p><img src="dagitty-model%20(2).png" class="img-fluid"></p>
 <p>The causal diagram shows how different factors might affect Walmart sales. Temperature is the main independent variable and weekly sales is dependent variable. The goal is to determine whether changes in temperature have a causal effect on sales.</p>
-<p>Date which includes seasonality plays an important role. Sales trend increase/decrease during certain times of the year, failing to control for Date and Holiday_Flag would create misleading relationship between sales and temperature, exmaple during winter sales would increase possibly due to festive season and not because of lower temperature. To address we control for Holiday Flag through date fixed effect</p>
+<p>Date which includes seasonality plays an important role. Sales trend increase/decrease during certain times of the year, failing to control for Date and Holiday_Flag would create misleading relationship between sales and temperature, example during winter sales would increase possibly due to festive season and not because of lower temperature. To address we control for Holiday Flag through date fixed effect</p>
 <p>Store characteristics like location, size, store quality (layout, customer service, management) which can influence both temperature and sales. To control these time invariant store characteristics we include store fixed effect</p>
 <p>Economic factors like fuel price, unemployment and CPI may affect purchasing behavior and therefore influence sales. These variables are included as controls to account for macroeconomic conditions that could otherwise confound the relationship between temperature and sales with date fixed effects</p>
 <p>Location and Date create back-door paths between temperature and sales. Store fixed effects absorb time-invariant store characteristics including geographic location and store quality, while date fixed effects block seasonal and macroeconomic shocks.</p>
 <p>DAG implies -</p>
 <ul>
-<li><p>Temperature ← Location(StoreChar) → Sales</p></li>
+<li><p>Temperature ← Location(StoreCharacterstics ) → Sales</p></li>
 <li><p>Temperature ← Date → Sales</p>
 <p>These are the two main back-door paths.</p></li>
 </ul>
@@ -350,7 +350,7 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <p>We strongly reject the null hypothesis ( β<em>Temp</em> = 0)</p>
 <p>t-test = β1<em>Temp</em> - β0 /SE</p>
 <p>= 0.005 - 0 / (0.0009) ~ 5.56</p>
-<p>The standard error is very large suggesting the value is far from the null value</p>
+<p>The standard error is small relative to the coefficient, leading to a large t-statistic and strong statistical significance.</p>
 <ul>
 <li>Regression equation</li>
 </ul>
@@ -358,7 +358,7 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <ul>
 <li>Taking the derivative</li>
 </ul>
-<p>d(log Sales)/dt (temp) = β1<em>Temp + 2β2</em>Temp</p>
+<p>d(log Sales)/dt (temp) = β1<em>+ 2β2</em>Temp</p>
 <ul>
 <li>The slope equals zero when:</li>
 </ul>
@@ -371,11 +371,16 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <p>A $1 increase in fuel price decreases the weekly sales by 0.5%</p>
 <p><strong>CPI</strong></p>
 <p>Coefficient: -0.0003 (p&lt;1)</p>
-<p>Statistically insignificant</p>
+<p>Statistically insignificant at conventional levels.</p>
 <p><strong>Unemployment</strong></p>
 <p>Coefficient: -0.026 (p&lt;0.05)</p>
 <p>A percentage point increase in unemployment decrease the weekly sales by 2.6%</p>
+<p><strong>Within R-square</strong></p>
+<p>Temperature and macro controls explain about 3.8% of within-store weekly variation in sales.</p>
 <p><strong>Conclusion</strong>:</p>
+<p>This analysis examines whether higher temperatures causally affect weekly sales across 45 Walmart stores between 2010 and 2012. Using panel data methods with store and week fixed effects, the causal effect of temperature is identified from cross-store variation in temperature within the same week, after removing time-invariant store characteristics and common seasonal or macroeconomic shocks.</p>
+<p>The regression results show that temperature has a statistically significant nonlinear (quadratic) relationship with sales. At moderate temperatures, a one-degree Fahrenheit increase is associated with approximately a 0.5% increase in weekly sales. However, the negative quadratic term implies diminishing returns to temperature, with sales reaching a peak at approximately 76°F. Beyond this point, further increases in temperature reduce sales.</p>
+<p>Overall, the evidence suggests that temperature does have a causal effect on sales, but the relationship is nonlinear. For managerial decision-making, this implies that moderate warming may benefit sales, whereas extreme heat events may negatively impact store performance. These findings can help Walmart in forecasting, planning inventory and marketing events based on temperature</p>
 </section>
 
 </main>
