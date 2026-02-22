@@ -140,7 +140,7 @@ The purpose of this plot is to check the functional form i.e shape of the depend
 
 # Step 5 - Regression Model with Fixed Effects
 
--   Model 1
+-   **Model 1**
 
 A panel fixed regression model blocks both date (time) and store back-doors paths.
 
@@ -168,7 +168,7 @@ etable(m1,digits = 3)
 
 **Regression Interpretation**
 
-A one degree Fahrenheit increase in temperature is associated with approximately 0.5% increase in weekly sales, holding fuel prices, CPI, unemployment, date and store fixed effects constant.
+A one degree Fahrenheit increase in temperature is associated with approximately \~ 0.5% increase in weekly sales, holding fuel prices, CPI, unemployment and, date and store fixed effects constant
 
 **Temperature effect -**
 
@@ -194,23 +194,23 @@ d(log Sales)/dt (temp) = β1*+ 2β2*Temp
 
 -   The slope equals zero when:
 
-0.005 - 2(-3.27e-5 )Temp = 0
+0 = 0.005 - 2(-3.27e-5 )Temp
 
-2(-3.27e-5 )Temp = 0.005
+-2(-3.27e-5 )Temp = 0.005
 
-Temp = β1/*2β2 \~ 76* degree Fahrenheit
+Temp = -β1/*2β2 \~ 76* degree Fahrenheit
 
 Sales increase with temperature upto 7*6* degree Fahrenheit ( the highest point of the blue curve where the slope is zero) then it starts to decline.
 
 **Fuel_Price**
 
-Coefficient: -0.005 (p\<1)
+Coefficient: -0.005 (p\<0.001)
 
 A \$1 increase in fuel price decreases the weekly sales by 0.5%
 
 **CPI**
 
-Coefficient: -0.0003 (p\<1)
+Coefficient: -0.0003 (p\<0)
 
 Statistically insignificant at conventional levels.
 
@@ -224,12 +224,57 @@ A percentage point increase in unemployment decrease the weekly sales by 2.6%
 
 Temperature and macro controls explain about 3.8% of within-store weekly variation in sales.
 
--   Model 2
+-   **Model 2** - As a robustness check, I re-estimate the model without macro controls (Fuel, CPI, Unemployment)
+
+```{r}
+m2<- feols( log_sales ~ Temperature + I(Temperature^2) | Store + Date , 
+            data = walmart , vcov = ~ Store)
+
+etable(m2,digits = 3)
+```
+
+**Interpretation**
+
+A one degree increase in Fahrenheit is associated with \~ 0.5% increase in weekly sales holding date and store fixed effect constant.
+
+**Coefficients**
+
+Temperature = 0.005 (p_value \< 0.001)
+
+I(Temperature\^2) = -2.97e-5 (p_value\<0.001)
+
+Turning point when slope is zero:
+
+Temp = - β1/*2β2*
+
+0 = -(0.005 /2(-2.97e-5))
+
+\~ 84 degree Fahrenheit
+
+The turning point shifts upward, but the inverted u realtionship still remains
+
+**Within R2**
+
+Temperature controls explains about 2.2% of within-store weekly variation in sales
+
+**Comparison**:
+
+Compare Model 1 & Model 2
+
+-   Temperature coefficients: same (0.005)
+
+-   Quadratic is still negative and significant
+
+-   Turning point, slight change in magnitude
+
+-   Within R2 decreases, since the model 2 excludes explanatory variables
+
+The above suggest, the nonlinear temperature effect is not driven by macroeconomic controls.
 
 **Conclusion**:
 
-This analysis examines whether higher temperatures causally affect weekly sales across 45 Walmart stores between 2010 and 2012. Using panel data methods with store and week fixed effects, the causal effect of temperature is identified from cross-store variation in temperature within the same week, after removing time-invariant store characteristics and common seasonal or macroeconomic shocks.
+This analysis examines whether higher temperatures causally affect weekly sales across 45 Walmart stores between 2010 and 2012. Using panel data methods with store and week fixed effects, the causal effect of temperature is identified from cross-store variation in temperature within the same week, after removing time-invariant store characteristics and Holiday Flag through date fixed effect
 
 The regression results show that temperature has a statistically significant nonlinear (quadratic) relationship with sales. At moderate temperatures, a one-degree Fahrenheit increase is associated with approximately a 0.5% increase in weekly sales. However, the negative quadratic term implies diminishing returns to temperature, with sales reaching a peak at approximately 76°F. Beyond this point, further increases in temperature reduce sales.
 
-Overall, the evidence suggests that temperature does have a causal effect on sales, but the relationship is nonlinear. For managerial decision-making, this implies that moderate warming may benefit sales, whereas extreme heat events may negatively impact store performance. These findings can help Walmart in forecasting, planning inventory and marketing events based on temperature
+Overall, the evidence suggests that temperature does have a causal effect on sales, but the relationship is nonlinear. For managerial decision-making, this implies that moderate warming may benefit sales, whereas extreme heat events may negatively impact store performance. These findings can help Walmart in forecasting, planning inventory and marketing events, product launches based on temperature
